@@ -1,4 +1,4 @@
-class DocumentTemplate
+class Documents
   def initialize
     @active_synonym_filter_locales = Set.new
     @active_protected_filter_locales = Set.new
@@ -26,9 +26,11 @@ class DocumentTemplate
   end
 
   def char_filter(json)
-    json.quotes do
-      json.type "mapping"
-      json.mappings ["\\u0091=>\\u0027", "\\u0092=>\\u0027", "\\u2018=>\\u0027", "\\u2019=>\\u0027", "\\u201B=>\\u0027"]
+    json.char_filter do
+      json.quotes do
+        json.type "mapping"
+        json.mappings ["\\u0091=>\\u0027", "\\u0092=>\\u0027", "\\u2018=>\\u0027", "\\u2019=>\\u0027", "\\u201B=>\\u0027"]
+      end
     end
   end
 
@@ -44,41 +46,43 @@ class DocumentTemplate
   end
 
   def analyzer(json)
-    GENERIC_ANALYZER_LOCALES.each do |locale|
-      json.set! "#{locale}_analyzer" do
+    json.analyzer do
+      GENERIC_ANALYZER_LOCALES.each do |locale|
+        json.set! "#{locale}_analyzer" do
+          json.type "custom"
+          json.filter filter_array(locale)
+          json.tokenizer "icu_tokenizer"
+          json.char_filter ["html_strip", "quotes"]
+        end
+      end
+      json.fr_analyzer do
         json.type "custom"
-        json.filter filter_array(locale)
+        json.filter ["icu_normalizer", "elision", "fr_stem_filter", "icu_folding"]
         json.tokenizer "icu_tokenizer"
         json.char_filter ["html_strip", "quotes"]
       end
-    end
-    json.fr_analyzer do
-      json.type "custom"
-      json.filter ["icu_normalizer", "elision", "fr_stem_filter", "icu_folding"]
-      json.tokenizer "icu_tokenizer"
-      json.char_filter ["html_strip", "quotes"]
-    end
-    json.ja_analyzer do
-      json.type "custom"
-      json.filter ["kuromoji_baseform", "ja_pos_filter", "icu_normalizer", "icu_folding", "cjk_width"]
-      json.tokenizer "kuromoji_tokenizer"
-      json.char_filter ["html_strip"]
-    end
-    json.ko_analyzer do
-      json.type "cjk"
-      json.filter []
-    end
-    json.zh_analyzer do
-      json.type "custom"
-      json.filter ["smartcn_word", "icu_normalizer", "icu_folding"]
-      json.tokenizer "smartcn_sentence"
-      json.char_filter ["html_strip"]
-    end
-    json.default do
-      json.type "custom"
-      json.filter ["icu_normalizer", "icu_folding"]
-      json.tokenizer "icu_tokenizer"
-      json.char_filter ["html_strip", "quotes"]
+      json.ja_analyzer do
+        json.type "custom"
+        json.filter ["kuromoji_baseform", "ja_pos_filter", "icu_normalizer", "icu_folding", "cjk_width"]
+        json.tokenizer "kuromoji_tokenizer"
+        json.char_filter ["html_strip"]
+      end
+      json.ko_analyzer do
+        json.type "cjk"
+        json.filter []
+      end
+      json.zh_analyzer do
+        json.type "custom"
+        json.filter ["smartcn_word", "icu_normalizer", "icu_folding"]
+        json.tokenizer "smartcn_sentence"
+        json.char_filter ["html_strip"]
+      end
+      json.default do
+        json.type "custom"
+        json.filter ["icu_normalizer", "icu_folding"]
+        json.tokenizer "icu_tokenizer"
+        json.char_filter ["html_strip", "quotes"]
+      end
     end
   end
 
@@ -94,9 +98,9 @@ class DocumentTemplate
 
   def filter_array(locale)
     array = ["icu_normalizer"]
-    array << "#{locale}_protected_filter" if File.exists?(Rails.root.join("config", "locales", "analysis", "#{locale}_protwords.txt"))
+    array << "#{locale}_protected_filter" if @active_protected_filter_locales.include? locale
     array << "#{locale}_stem_filter"
-    array << "#{locale}_synonym" if File.exists?(Rails.root.join("config", "locales", "analysis", "#{locale}_synonyms.txt"))
+    array << "#{locale}_synonym" if @active_synonym_filter_locales.include? locale
     array << "icu_folding"
     array
   end
@@ -129,8 +133,8 @@ class DocumentTemplate
 
   def dynamic_templates(json)
     json.dynamic_templates do
+      language_templates(json)
       json.child! do
-        language_templates(json)
         json.string_fields do
           json.mapping do
             json.analyzer "default"
@@ -167,12 +171,14 @@ class DocumentTemplate
 
   def language_templates(json)
     LANGUAGE_ANALYZER_LOCALES.each do |locale|
-      json.set! locale do
-        json.match "*_#{locale}"
-        json.match_mapping_type "string"
-        json.mapping do
-          json.analyzer "#{locale}_analyzer"
-          json.type "string"
+      json.child! do
+        json.set! locale do
+          json.match "*_#{locale}"
+          json.match_mapping_type "string"
+          json.mapping do
+            json.analyzer "#{locale}_analyzer"
+            json.type "string"
+          end
         end
       end
     end

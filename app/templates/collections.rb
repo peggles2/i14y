@@ -1,4 +1,4 @@
-class CollectionTemplate
+class Collections
   def body
     Jbuilder.encode do |json|
       json.template "*-#{APP_NAME}-collections-*"
