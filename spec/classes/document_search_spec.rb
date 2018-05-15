@@ -245,6 +245,22 @@ describe DocumentSearch do
         expect(document_search_results.results.first['tags']).to match_array(['stats'])
       end
     end
+
+    context 'searching for domain names without the TLD in the query' do
+      let(:document_search) do
+        DocumentSearch.new(search_options.merge(query: "amazon"))
+      end
+
+      before do
+        Document.create(common_params.merge(content: 'amazon.com'))
+        Document.create(common_params.merge(content: 'amazon'))
+        Document.refresh_index!
+      end
+
+      it 'finds documents both with and without the TLD' do
+        expect(document_search_results.total).to eq 2
+      end
+    end
   end
 
   describe "sorting by date" do
