@@ -246,23 +246,23 @@ describe DocumentSearch do
       end
     end
 
-    # context 'searching for domain names without the TLD in the query' do
-    #   let(:document_search) do
-    #     DocumentSearch.new(search_options.merge(query: "amazon"))
-    #   end
-    #
-    #   before do
-    #     Document.create(common_params.merge(content: 'amazon.com'))
-    #     Document.create(common_params.merge(content: 'amazon'))
-    #     Document.refresh_index!
-    #   end
-    #
-    #   it 'finds docgit commit -am "Interiuments both with and without the TLD' do
-    #     binding.pry
-    #     document_search_results = document_search.search
-    #     expect(document_search_results.total).to eq 2
-    #   end
-    # end
+    context 'searching for domain names without the TLD in the query' do
+      let(:document_search) do
+        DocumentSearch.new(search_options.merge(query: "amazon"))
+      end
+
+      before do
+        Document.create(common_params.merge(content: 'amazon.com'))
+        Document.create(common_params.merge(content: 'amazon'))
+        Document.create(common_params.merge(description: 'amazon.com'))
+        Document.refresh_index!
+      end
+
+      it 'finds documents both with and without the domain extension in multiple fields' do
+        document_search_results = document_search.search
+        expect(document_search_results.total).to eq 3
+      end
+    end
   end
 
   describe "sorting by date" do

@@ -277,7 +277,6 @@ class Documents
               json.set! 'domain_minus_ext' do
                 json.type 'text'
                 json.analyzer 'domain_minus_ext_analyzer'
-                json.copy_to 'bigrams'
               end
             end
           end

@@ -149,6 +149,11 @@ class DocumentQuery
                     end
                   end
 
+
+                  doc_query.full_text_fields.each do |field|
+                     should { constant_score filter: { term: { "#{field}.domain_minus_ext": 'amazon' }}}
+                  end
+
                   should { match basename: { operator: 'and', query: doc_query.query } }
                   should { match tags:     { operator: 'and', query: doc_query.query.downcase } }
                 end
